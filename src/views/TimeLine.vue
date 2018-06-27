@@ -3,9 +3,10 @@
         <Navbar/>    
        
             <div class="row">
-                <LeftColumn/>
-                <div class="col s6" id="column-2">
-                    <div class="row" id="post" v-for="post in allPosts">
+                <LeftColumn @usernamePassed="username = $event"></LeftColumn>
+                
+                <div class="col s5" id="column-2">
+                    <div class="row" id="post" v-for="(post,index) in allPosts" :key="index" >
                         <div class="col s12">
                             <div class="card blue-grey darken-1">
                                 <div class="card-content white-text">
@@ -13,46 +14,51 @@
                                     <p>{{post.content}}</p>
                                 </div>
                                 <div class="card-action">
-                                    <a href="#">
-                                        <i class="material-icons icon-yellow" id="comment" >comment</i>
-                                    </a>
-                                    
-                                    <a href v-on:click="addLike(post._id)">   
-                                        <i class="material-icons icon-yellow" id="star" >star</i>
-                                        {{post.likeId.length}}   
-
-                                    </a>    
+                                    <button id="like-com-button" data-target="modal3" class="btn-small modal-trigger" v-on:click="addComment(post)">
+                                        <i class="material-icons icon-yellow" id="comment" >comment</i></button>
+                                         <!-- Modal Structure -->
+                                        <div id="modal3" class="modal">
+                                            <div class="modal-content">
+                                                <h5 align="center">Compose Comment</h5>
+                                                <hr><br>
+                                                <textarea id="text-area" cols="30" rows="10" placeholder="what's happening?" v-model="commentText"></textarea>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button class="modal-close waves-effect waves-red btn red" v-on:click="addComment()">Tweet</button>
+                                            </div>
+                                        </div>    
+                                
+                                    <button id="like-com-button" v-on:click="addLike(post)" > 
+                                        <i  class="material-icons icon-yellow" id="star" >star</i>
+                                        {{post.like.length }}
+                                    </button>    
                                     <!-- Modal Trigger -->
-                                    <button data-target="modal2" class="btn-small red modal-trigger" v-on:click="getComment(post._id)">see all comments</button>       
-                                                 
+                                    <button data-target="modal2" class="btn-small red modal-trigger" v-on:click="getComment(post)">see all comments</button>       
+                                    <!-- Modal Structure -->
+                                    <div id="modal2" class="modal" >
+                                        <div class="modal-content" >
+                                            <div class="row" v-for="comment in comments" >
+                                                <div class="col s12 ">
+                                                    <div class="card blue-grey darken-1">
+                                                        <div class="card-content white-text">
+                                                            <span class="card-title">@{{comment.username}}</span>
+                                                            <p>{{comment.content}}</p>
+                                                        </div>
+                                                        
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button  class="modal-close waves-effect waves-red btn red">close</button>
+                                        </div>
+                                    </div>             
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <!-- Modal Structure -->
-                    <div id="modal2" class="modal" v-if="showComment==true" >
-                        <div class="modal-content">
-                            <div class="row">
-                                <div class="col s12 ">
-                                    <div class="card blue-grey darken-1" v-for="comment in comment">
-                                        <div class="card-content white-text">
-                                            <span class="card-title">@{{comment.userId.username}}</span>
-                                            <p>{{comment.content}}</p>
-                                        </div>
-                                        
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button  class="modal-close waves-effect waves-red btn red">close</button>
-                        </div>
-                    </div> 
-                    
                 </div>
-                <div class="col s3">
-                        
-                </div>
+                <RightColumn></RightColumn>              
             </div>
        
     </div>
@@ -63,20 +69,23 @@
 
 import Navbar from '../components/Navbar.vue'
 import LeftColumn from '../components/LeftColumn.vue'
+import RightColumn from '../components/RightColumn.vue'
 import axios from 'axios'
 
 export default {
     name:"timeline",
     components: {
         Navbar,
-        LeftColumn
+        LeftColumn,
+        RightColumn
     },
     data() {
         return {
+            commentText:"",
+            username:"",
             allPosts:null,
-            star:"black",
-            comment:[{content:null,userId:{username:null}}],
-            showComment:false
+            postmodalId:"", //for modal to catch post id
+            comments:[]
         }
     },
     created() {
@@ -88,7 +97,33 @@ export default {
        
     },
     methods:{
-
+         addComment(post) {
+            if(post) {
+                console.log("xxx",post._id)
+                var elems = document.querySelectorAll('#modal3');
+                var instances = M.Modal.init(elems);
+                this.postmodalId = post._id
+            }else{
+            //    console.log("posting",this.postmodalId);
+                axios({
+                    method:"put",
+                    url:"http://localhost:3000/posts/addcomment",
+                    data: {
+                        username: this.username,
+                        content:this.commentText,
+                        postId: this.postmodalId
+                    }
+                })
+                .then(response=>{
+                    console.log(response);
+                    
+                })
+                .catch(err=>{
+                    console.log(err.message)
+                })
+            }
+                
+        },
         getPost() {
             axios({
                 method: "get",
@@ -112,46 +147,54 @@ export default {
             // element.classList.add(".icon-yellow");
             this.star="yellow"
         },
-        addLike(postId) {
-            axios({
-                method:"post",
-                url:"http://localhost:3000/likes/add",
-                headers:{
-                    token: localStorage.getItem("token")
-                },
-                data:{
-                    status:"true",
-                    postId: postId
-                }
-            })
-            .then(response=>{
-                console.log(response)
-                this.getPost()
-            })
-            .catch(err=>{
-                console.log(err)
-            })
-        },
-        getComment(postId) {
+        addLike(post) {
+            let statusLike = post.like.indexOf(this.username)
+
+            if(statusLike == -1){
+                post.like.push(this.username)
+                axios({
+                    method:"put",
+                    url:"http://localhost:3000/posts/updatelike",
+                    data:{
+                        username: this.username,
+                        postId: post._id
+                    }
+                })
+                .then(response=>{
+                    console.log(response)
+                })
+                .catch(err=>{
+                    console.log(err)
+                })
+            }else{
+                swal(
+                    "warning",
+                    "you have like this post",
+                    "warning"
+                )
+            }
+        }
+        ,
+        getComment(post) {
             this.showComment=true
             var elems = document.querySelectorAll('#modal2');
             var instances = M.Modal.init(elems);
 
             axios({
                 method:"get",
-                url:"http://localhost:3000/comments/show",
+                url:"http://localhost:3000/posts/showOnePost",
                 headers:{
-                    id: postId
+                    id: post._id
                 }
             })
             .then(({data})=>{
-                console.log(data)
-                this.comment=data
+                console.log(data.comment)
+                this.comments=data.comment
             })
             .catch(err=>{
                 console.log(err)
             })
-        },
+        }
 
     }
 }
@@ -168,8 +211,6 @@ export default {
 #post {
      margin-bottom:0!important;
      margin-top:0!important;
-   
- 
 }
 
 .card-action {
@@ -178,6 +219,15 @@ export default {
 
 i.icon-yellow {
     color:yellow
+}
+
+#like-com-button {
+    background-color: Transparent;
+    background-repeat:no-repeat;
+    border: none;
+    cursor:pointer;
+    overflow: hidden;
+    outline:none;
 }
 
 </style>

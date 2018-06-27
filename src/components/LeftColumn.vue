@@ -89,6 +89,7 @@ export default {
             .then(({data})=>{
                 this.username = data.username
                 this.email = data.email
+                this.$emit('usernamePassed',data.username)
                 
             })
             .catch(err=>{
